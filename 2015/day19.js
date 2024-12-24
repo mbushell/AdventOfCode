@@ -28,12 +28,12 @@ function solve(data)
           break;
         } else if (!seen[new_str]) {
           seen[new_str] = true;
-          queue.push([new_str, molecule.length - new_str.length, steps+1]);
+          queue.push([new_str, new_str.length, steps+1]);
         }
       }
     }
 
-    queue.sort((a, b) => a[1] - b[1])
+    queue.sort((a, b) => b[1] - a[1])
   }
 }
 
