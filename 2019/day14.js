@@ -1,144 +1,105 @@
 const file = require("path").basename(__filename);
 
-// Star 1: <= 511918
-// Star 2: 
+// Star 1: 485720
+// Star 2: 3848998
 
-/*
-// 31
-solve(`10 ORE => 10 A
-1 ORE => 1 B
-7 A, 1 B => 1 C
-7 A, 1 C => 1 D
-7 A, 1 D => 1 E
-7 A, 1 E => 1 FUEL`);
+class Item {
+  constructor(name) {
+    this.name   = name;
+    this.recipe = new Recipe();
+  }
+  cost_of(amount, stash)
+  {
+    stash[this.name] ??= 0;
+    if (stash[this.name] >= amount) {
+      stash[this.name] -= amount;
+      //console.log(">", amount, this.name, `[${stash[this.name]}]`);
+      return 0;
+    }
+    if (stash[this.name] > 0) {
+      let temp = amount;
+      amount -= stash[this.name];
+      stash[this.name] = 0;
+      //console.log(">", stash[this.name], this.name, `[${stash[this.name]}]`);
+    }
 
-// 165
-solve(`9 ORE => 2 A
-8 ORE => 3 B
-7 ORE => 5 C
-3 A, 4 B => 1 AB
-5 B, 7 C => 1 BC
-4 C, 1 A => 1 CA
-2 AB, 3 BC, 4 CA => 1 FUEL`);
+    
+    if (this.name == "ORE") {
+      //console.log(`£${amount}`, this.name);
+      return amount;
+    }
 
-// 13312
-solve(`157 ORE => 5 NZVS
-165 ORE => 6 DCFZ
-44 XJWVT, 5 KHKGT, 1 QDVJ, 29 NZVS, 9 GPVTF, 48 HKGWZ => 1 FUEL
-12 HKGWZ, 1 GPVTF, 8 PSHF => 9 QDVJ
-179 ORE => 7 PSHF
-177 ORE => 5 HKGWZ
-7 DCFZ, 7 PSHF => 2 XJWVT
-165 ORE => 2 GPVTF
-3 DCFZ, 7 NZVS, 5 HKGWZ, 10 PSHF => 8 KHKGT`);
-*/
+    let times = Math.ceil(amount / this.recipe.makes);
+    let making = this.recipe.makes * times;
+    let spare = making - amount;
 
-// 180697
-solve(`
-2 VPVL, 7 FWMGM, 2 CXFTF, 11 MNCFX => 1 STKFG
-17 NVRVD, 3 JNWZP => 8 VPVL
-53 STKFG, 6 MNCFX, 46 VJHF, 81 HVMC, 68 CXFTF, 25 GNMV => 1 FUEL
-22 VJHF, 37 MNCFX => 5 FWMGM
-139 ORE => 4 NVRVD
-144 ORE => 7 JNWZP
-5 MNCFX, 7 RFSQX, 2 FWMGM, 2 VPVL, 19 CXFTF => 3 HVMC
-5 VJHF, 7 MNCFX, 9 VPVL, 37 CXFTF => 6 GNMV
-145 ORE => 6 MNCFX
-1 NVRVD => 8 CXFTF
-1 VJHF, 6 MNCFX => 4 RFSQX
-176 ORE => 6 VJHF
-`.trim());
+    //console.log("+", making, this.name);
 
-return;
+    if (spare > 0) {
+      stash[this.name] += spare;
+      //console.log("<", spare, this.name, `[${stash[this.name]}]`);
+    }
 
-// 2210736
-solve(`171 ORE => 8 CNZTR
-7 ZLQW, 3 BMBT, 9 XCVML, 26 XMNCP, 1 WPTQ, 2 MZWV, 1 RJRHP => 4 PLWSL
-114 ORE => 4 BHXH
-14 VRPVC => 6 BMBT
-6 BHXH, 18 KTJDG, 12 WPTQ, 7 PLWSL, 31 FHTLT, 37 ZDVW => 1 FUEL
-6 WPTQ, 2 BMBT, 8 ZLQW, 18 KTJDG, 1 XMNCP, 6 MZWV, 1 RJRHP => 6 FHTLT
-15 XDBXC, 2 LTCX, 1 VRPVC => 6 ZLQW
-13 WPTQ, 10 LTCX, 3 RJRHP, 14 XMNCP, 2 MZWV, 1 ZLQW => 1 ZDVW
-5 BMBT => 4 WPTQ
-189 ORE => 9 KTJDG
-1 MZWV, 17 XDBXC, 3 XCVML => 2 XMNCP
-12 VRPVC, 27 CNZTR => 2 XDBXC
-15 KTJDG, 12 BHXH => 5 XCVML
-3 BHXH, 2 VRPVC => 7 MZWV
-121 ORE => 7 VRPVC
-7 XCVML => 6 RJRHP
-5 BHXH, 4 VRPVC => 5 LTCX`);
+    return this.recipe.cost_of(times, stash);
+  }
+}
 
+class Recipe {
+  constructor() {
+    this.makes = 0;
+    this.ingredients = [];
+  }
+  cost_of(times, stash) {
+    let total = 0;
+    for (let ing of this.ingredients) {
+      total += ing.item.cost_of(ing.amount * times, stash);
+    }
+    return total;
+  }
+}
 
-require("node:fs").readFile(file.replace(".js", ".txt"),
-  "utf8", (err, data) => solve(data.trim())
-);
 
 function solve(data)
 {
-  const recipes = {};
+  let items = {};
+
+  function get_item(name) {
+    return items[name] ??= new Item(name);
+  }
 
   data.split("\n").forEach(recipe => {
     let [from, to] = recipe.split(" => ");
-    to = to.split(" ");
-    from = from.split(", ").map(ingredient => {
-      let [amount, name] = ingredient.split(" ");
-      return { name: name, required: parseInt(amount) };
+    
+    let [to_amount, to_name] = to.split(" ");
+    let to_item = get_item(to_name);
+    to_item.recipe.makes = parseInt(to_amount);
+
+    from.split(", ").forEach(item => {
+      let [from_amount, from_name] = item.split(" ");
+      let from_item = get_item(from_name);
+      to_item.recipe.ingredients.push({
+        item: from_item,
+        amount: parseInt(from_amount),
+      });
     });
-    recipes[to[1]] = {
-      ingredients: from,
-      makes: parseInt(to[0]),
-    }
   });
+
   
-  /*
-  6 MNCFX, 46 VJHF, 68 CXFTF, 25 GNMV, 53 STKFG, 81 HVMC => 1 FUEL
-  2 VPVL, 7 FWMGM, 2 CXFTF, 11 MNCFX                     => 1 STKFG
-  5 MNCFX, 7 RFSQX, 2 FWMGM, 2 VPVL, 19 CXFTF            => 3 HVMC
-  5 VJHF, 7 MNCFX, 9 VPVL, 37 CXFTF                      => 6 GNMV
-
-  17 NVRVD, 3 JNWZP => 8 VPVL
-  22 VJHF, 37 MNCFX => 5 FWMGM
-  1 NVRVD           => 8 CXFTF
-  1 VJHF, 6 MNCFX   => 4 RFSQX
-
-  139 ORE => 4 NVRVD
-  144 ORE => 7 JNWZP
-  145 ORE => 6 MNCFX
-  176 ORE => 6 VJHF
-  */
-
-  function set_level(item_name, level) {
-    let recipe = recipes[item_name];
-    if (item_name == 'ORE') return;
-    recipe.level ??= level;
-    recipe.ingredients.forEach(ingredient =>
-      set_level(ingredient.name, level+1)
-    );
+  let item = get_item("FUEL");
+  
+  let i = 3840000;
+  let cost = 0;
+  let stash = {};
+  while ((cost = item.cost_of(i, stash)) < 1000000000000) {
+    console.log(i, cost);
+    stash = {};
+    i++;
   }
-
-  set_level('FUEL', 0);
-
-  let levels = Object.groupBy(Object.entries(recipes), obj => obj[1].level);
-
-
-  Object.values(levels).forEach((level, i) =>
-  {
-    console.log("Level", i);
-
-
-    level.forEach(item => {
-      let [name, recipe] = item;
-      console.log(recipe.makes, "x", name, "\t",
-        recipe.ingredients.map(i =>
-          i.required + " x " + i.name + ` (${i.name == "ORE" ? "" : recipes[i.name].level})`
-        ).join(", "));
-      
-    })
-
-    console.log();
-  })
-
-
 }
+
+
+require("node:fs").readFile(file.replace(".js", ".txt"),
+"utf8", (err, data) => solve(data.trim())
+);
+
+
