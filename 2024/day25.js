@@ -1,7 +1,5 @@
 const file = require("path").basename(__filename);
 
-
-
 function solve(data)
 {
   let keys  = [];
