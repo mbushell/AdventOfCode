@@ -135,7 +135,7 @@ module.exports = class IC
     }
   }
 
-  disassemble(length)
+  disassemble(from, to)
   {
     const self = this;
     const c = this.code;
@@ -152,8 +152,7 @@ module.exports = class IC
     }
     
 
-    this.pc = 0;
-    while (this.pc < length)
+    for (this.pc = from; this.pc < to; )
     {
       [op, ...params] = this.decode(c[this.pc]);
       switch (op) {
