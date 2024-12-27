@@ -4,7 +4,6 @@ class Queue {
   constructor() {
     this.queue  = [];
     this.index  = {};
-    this._length = 0;
   }
   push(value, weight) {
     this.index[value] = this.queue.length;
