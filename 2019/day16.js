@@ -60,9 +60,8 @@ function solve(data)
     tail[i] = n;
   }
 
-
   for (let i = 0; i < 100; i++) {
-    head = phase_part1(head, 0);
+    head = phase_part1(head);
     tail = phase_part2(tail);
   }
 
