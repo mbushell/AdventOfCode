@@ -64,6 +64,21 @@ module.exports = class IC
     this.start();
   }
 
+  input_str(value)
+  {
+    for (let i = 0; i < value.length; i++) {
+      this.input(value.charCodeAt(i));
+    }
+  }
+
+  output_str() {
+    return String.fromCharCode(...this.outputs);
+  }
+
+  clear_outputs() {
+    this.outputs = [];
+  }
+
   advance()
   {   
     const self = this;
