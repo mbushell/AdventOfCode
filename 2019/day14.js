@@ -86,15 +86,17 @@ function solve(data)
 
   
   let item = get_item("FUEL");
+  console.log("Star 1:", item.cost_of(1, {}));
   
   let i = 3840000;
   let cost = 0;
   let stash = {};
   while ((cost = item.cost_of(i, stash)) < 1000000000000) {
-    console.log(i, cost);
+    //console.log(i, cost);
     stash = {};
     i++;
   }
+  console.log("Star 2:", i);
 }
 
 
