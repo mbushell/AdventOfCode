@@ -46,7 +46,7 @@ function solve(data)
     outputs = [];
     i++;
   }
-  console.log(i);
+  console.log("Star 1:", i);
 }
 
 require("node:fs").readFile(file.replace(".js", ".txt"),
