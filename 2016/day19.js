@@ -9,9 +9,9 @@ function solve(data)
   console.log("Star 1:", star1_formula(number_of_elves));
 
   // TODO: this isn't correct for all inputs?
-  let star2_formula = x => x - 3**Math.floor(Math.log2(x)/Math.log2(3)) + 1;
+  let star2_formula = x => x - 3**Math.floor(Math.log2(x)/Math.log2(3));
 
-  console.log("Star 2:", star2_formula(number_of_elves-1));
+  console.log("Star 2:", star2_formula(number_of_elves));
 }
 
 function star1(length) {
