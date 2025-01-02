@@ -1,16 +1,26 @@
 const file = require("path").basename(__filename);
 
+
+
+exports.knot_hash = knot_hash;
+
 function solve(data)
 {
   let list = Array(255);
-  
   for (let i = 0; i <= 255; i++) list[i] = i;
   let lengths = data.split(",").map(Number);
   round(list, lengths, 0, 0);
   console.log("Star 1:", list[0]*list[1]);
-  
+
+  console.log("Star 2:", knot_hash(data));
+}
+
+function knot_hash(string)
+{
+  let list = Array(255);
   for (let i = 0; i <= 255; i++) list[i] = i;
-  lengths = data.split("").map(c => c.charCodeAt(0)); 
+
+  lengths = string.split("").map(c => c.charCodeAt(0)); 
   lengths.push(17, 31, 73, 47, 23); 
 
   let pos = 0;
@@ -28,11 +38,11 @@ function solve(data)
     digits.push(digit);
   }
   
-  console.log("Star 2:", digits.map(n => {
+  return digits.map(n => {
     let hex = n.toString(16);
     if (hex.length == 1) return `0${hex}`;
     return hex;
-  }).join(""));
+  }).join("");
 }
 
 function round(list, lengths,  pos, skip)
@@ -55,6 +65,8 @@ function round(list, lengths,  pos, skip)
   return [pos, skip];
 }
 
-require("node:fs").readFile(file.replace(".js", ".txt"),
-  "utf8", (err, data) => solve(data.trim())
-);
+if (require.main === module) {
+  require("node:fs").readFile(file.replace(".js", ".txt"),
+    "utf8", (err, data) => solve(data.trim())
+  );
+}
