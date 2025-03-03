@@ -1,26 +1,22 @@
-//use std::collections::HashMap;
+use std::sync::Arc;
+use std::thread;
 
 pub fn solve(data: &str) -> (usize, usize) {
-    let units: Vec<char> = data.trim().chars().collect();
+    let shared_units: Arc<Vec<char>> = Arc::new(data.trim().chars().collect());
 
-    let star1 = reduce_units(units.clone());
+    let star1 = reduce_units((*shared_units).clone());
 
-    let mut min: Option<usize> = None;
-    for c in "abcdefghijklmnopqrstuvwxyz".chars() {
-        let mut copy = Vec::new();
-        for unit in &units {
-            if unit.to_ascii_lowercase() != c {
-                copy.push(*unit);
-            }
-        }
-        let size = reduce_units(copy);
-        min = if min.is_none() {
-            Some(size)
-        } else {
-            Some(std::cmp::min(min.unwrap(), size))
-        }
+    let mut thread_pool = Vec::new();
+    "abcdefghijklmnopqrstuvwxyz".chars().for_each(|c| {
+        let thread_units = shared_units.clone();
+        thread_pool.push(thread::spawn(move || reduce_without(&thread_units, c)));
+    });
+
+    let mut min_length = usize::max_value();
+    for join_handler in thread_pool {
+        min_length = std::cmp::min(min_length, join_handler.join().unwrap());
     }
-    let star2 = min.unwrap();
+    let star2 = min_length;
 
     return (star1, star2);
 }
@@ -47,4 +43,14 @@ fn find_pair(units: &Vec<char>, from: usize) -> Option<usize> {
         }
     }
     return None;
+}
+
+fn reduce_without(units: &Vec<char>, without: char) -> usize {
+    let mut copy = Vec::new();
+    for unit in units {
+        if unit.to_ascii_lowercase() != without {
+            copy.push(*unit);
+        }
+    }
+    return reduce_units(copy);
 }
