@@ -40,50 +40,22 @@ fn parse_data(data: &str) -> (Track, Carts) {
 
     for (y, line) in data.lines().enumerate() {
         track.height = y as u32;
-        for (x, c) in line.chars().enumerate() {
+        for (x, tile) in line.chars().enumerate() {
             track.width = x as u32;
+
             let pos = (x as u32, y as u32);
-            match c {
-                '^' => {
-                    carts.push(Rc::new(RefCell::new(Cart {
-                        pos,
-                        dir: Direction::North,
-                        int: Intersection::Left,
-                        alive: true,
-                    })));
-                    track.tiles.insert(pos, ('|', None));
-                }
-                'v' => {
-                    carts.push(Rc::new(RefCell::new(Cart {
-                        pos,
-                        dir: Direction::South,
-                        int: Intersection::Left,
-                        alive: true,
-                    })));
-                    track.tiles.insert(pos, ('|', None));
-                }
-                '<' => {
-                    carts.push(Rc::new(RefCell::new(Cart {
-                        pos,
-                        dir: Direction::West,
-                        int: Intersection::Left,
-                        alive: true,
-                    })));
-                    track.tiles.insert(pos, ('-', None));
-                }
-                '>' => {
-                    carts.push(Rc::new(RefCell::new(Cart {
-                        pos,
-                        dir: Direction::East,
-                        int: Intersection::Left,
-                        alive: true,
-                    })));
-                    track.tiles.insert(pos, ('-', None));
-                }
-                _ => {
-                    track.tiles.insert(pos, (c, None));
-                }
+            let mut tile = tile;
+
+            if let Some(dir) = Direction::from_char(tile) {
+                tile = dir.to_tile();
+                carts.push(Rc::new(RefCell::new(Cart {
+                    pos,
+                    dir,
+                    int: Intersection::Left,
+                    alive: true,
+                })));
             }
+            track.tiles.insert(pos, (tile, None));
         }
     }
 
@@ -122,12 +94,8 @@ fn tick(track: &mut Track, carts: &mut Carts) -> Option<String> {
 
         {
             let mut cart: RefMut<'_, Cart> = cart.borrow_mut();
-            match cart.dir {
-                Direction::North => cart.pos.1 -= 1,
-                Direction::South => cart.pos.1 += 1,
-                Direction::West => cart.pos.0 -= 1,
-                Direction::East => cart.pos.0 += 1,
-            }
+
+            cart.advance();
 
             let tile = track.tiles[&cart.pos].0;
 
@@ -142,8 +110,7 @@ fn tick(track: &mut Track, carts: &mut Carts) -> Option<String> {
         track.tiles.entry(pos).and_modify(|tile| {
             if tile.1.is_some() {
                 if first_crash_site.is_none() {
-                    let crash_site = cart.borrow().pos;
-                    first_crash_site = Some(format!("{},{}", crash_site.0, crash_site.1));
+                    first_crash_site = Some(format!("{},{}", pos.0, pos.1));
                 }
                 cart.borrow_mut().alive = false;
                 let other = tile.1.take().unwrap().upgrade().unwrap();
@@ -163,7 +130,7 @@ fn draw_track(track: &Track) {
         for x in 0..=track.width {
             let tile = &track.tiles[&(x, y)];
             if let Some(cart) = &tile.1 {
-                print!("{} ", cart.upgrade().unwrap().borrow().dir);
+                print!("{} ", cart.upgrade().unwrap().borrow().dir.to_tile());
             } else {
                 print!("{} ", track.tiles[&(x, y)].0);
             }
@@ -178,6 +145,7 @@ struct Track {
     width: u32,
     height: u32,
 }
+
 type Carts = Vec<Rc<RefCell<Cart>>>;
 
 #[derive(Debug)]
@@ -189,6 +157,15 @@ struct Cart {
 }
 
 impl Cart {
+    fn advance(&mut self) {
+        match self.dir {
+            Direction::North => self.pos.1 -= 1,
+            Direction::South => self.pos.1 += 1,
+            Direction::West => self.pos.0 -= 1,
+            Direction::East => self.pos.0 += 1,
+        }
+    }
+
     fn next(&self, tile: char) -> Direction {
         if tile == '+' {
             match self.int {
@@ -226,6 +203,23 @@ enum Direction {
 }
 
 impl Direction {
+    fn from_char(c: char) -> Option<Direction> {
+        match c {
+            '^' => Some(Direction::North),
+            'v' => Some(Direction::South),
+            '<' => Some(Direction::West),
+            '>' => Some(Direction::East),
+            _ => None,
+        }
+    }
+
+    fn to_tile(&self) -> char {
+        match self {
+            Direction::North | Direction::South => '|',
+            Direction::West | Direction::East => '-',
+        }
+    }
+
     fn next(&self, tile: char) -> Self {
         match (self, tile) {
             (Direction::North, '/') => Direction::East,
@@ -263,17 +257,5 @@ impl Intersection {
             Self::Straight => Self::Right,
             Self::Right => Self::Left,
         }
-    }
-}
-
-impl std::fmt::Display for Direction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let _ = f.write_str(match self {
-            Direction::North => "^",
-            Direction::South => "v",
-            Direction::West => "<",
-            Direction::East => ">",
-        });
-        Ok(())
     }
 }
