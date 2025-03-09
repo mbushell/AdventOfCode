@@ -11,11 +11,8 @@ pub fn solve(data: &str) -> (i32, u32) {
         rounds += 1;
     }
 
-    println!("{} {}", rounds, game.remaining_health());
-
     let star1 = rounds * game.remaining_health();
 
-    // < 185666 (74*2509)
     return (star1, 0);
 }
 
@@ -91,7 +88,7 @@ impl Game {
                         );
                         None
                     }
-                    _ => panic!("Unknown map character '{chr}'"),
+                    _ => panic!("unknown map character '{chr}'"),
                 };
             }
         }
@@ -108,14 +105,6 @@ impl Game {
             let mut targets = self.get_unit_positions(Some(unit.kind));
 
             if targets.len() == 0 {
-                println!(
-                    "{} win!",
-                    if unit.kind == Kind::Elf {
-                        "Elves"
-                    } else {
-                        "Goblins"
-                    }
-                );
                 return false;
             }
 
@@ -146,14 +135,6 @@ impl Game {
                 target.take_damage(damage);
 
                 if !target.is_alive() {
-                    println!(
-                        "{} died!",
-                        if target.kind == Kind::Elf {
-                            "Elf"
-                        } else {
-                            "Goblin"
-                        }
-                    );
                     self.remove_item(target_pt);
                 }
             }
@@ -164,23 +145,33 @@ impl Game {
 
     fn move_unit(&mut self, unit_pos: &Point, targets: &Vec<Point>) -> Option<Point> {
         let mut possible_moves = vec![];
-        let mut shortest_move = usize::max_value();
+        let mut shortest_move = usize::max_value() - 1;
 
         for target_pt in targets {
+            if target_pt.dist(unit_pos) > shortest_move + 1 {
+                continue;
+            }
             for nbr in target_pt.neighbours() {
                 if !self.is_open(&nbr) {
                     continue;
                 }
-                if nbr.is_adjacent(unit_pos) {
-                    // skip path finder if tile is adjacent
-                    shortest_move = 2;
-                    possible_moves.push((nbr, vec![unit_pos.clone(), nbr.clone()]));
+
+                if nbr.dist(unit_pos) > shortest_move {
                     continue;
                 }
 
-                if let Some(path) = self.grid.shortest_path(&unit_pos, &nbr) {
-                    shortest_move = std::cmp::min(shortest_move, path.len());
-                    possible_moves.push((nbr, path));
+                if nbr.is_adjacent(unit_pos) {
+                    shortest_move = 2;
+                    possible_moves.push((nbr, 2));
+                    continue;
+                }
+
+                let length = self.grid.shortest_distance(&unit_pos, &nbr);
+                if length > 0 {
+                    if length <= shortest_move {
+                        shortest_move = std::cmp::min(shortest_move, length);
+                        possible_moves.push((nbr, length));
+                    }
                 }
             }
         }
@@ -191,7 +182,7 @@ impl Game {
 
         let mut possible_moves = possible_moves
             .iter()
-            .filter(|x| x.1.len() == shortest_move)
+            .filter(|x| x.1 == shortest_move)
             .collect::<Vec<_>>();
 
         possible_moves.sort_by(|a, b| a.0.cmp(&b.0));
@@ -199,25 +190,36 @@ impl Game {
         let chosen_dest = possible_moves[0];
 
         let mut possible_routes = vec![];
+        let mut shortest_route = usize::max_value();
         for nbr in unit_pos.neighbours() {
             if !self.is_open(&nbr) {
                 continue;
             }
 
             if nbr == chosen_dest.0 {
-                possible_routes.push((nbr, vec![nbr]));
+                shortest_route = 2;
+                possible_routes.push((nbr, 2));
                 continue;
             }
 
-            if let Some(path) = self.grid.shortest_path(&nbr, &chosen_dest.0) {
-                possible_routes.push((nbr, path));
+            if nbr.dist(&chosen_dest.0) > shortest_route {
+                continue;
+            }
+
+            let length = self.grid.shortest_distance(&nbr, &chosen_dest.0);
+            if length > 0 {
+                if length <= shortest_route {
+                    shortest_route = std::cmp::min(shortest_route, length);
+                    possible_routes.push((nbr, length));
+                }
             }
         }
+
         possible_routes.sort_by(|a, b| {
-            if a.1.len() == b.1.len() {
+            if a.1 == b.1 {
                 a.0.cmp(&b.0)
             } else {
-                a.1.len().cmp(&b.1.len())
+                a.1.cmp(&b.1)
             }
         });
 
@@ -267,13 +269,6 @@ impl Game {
         self.grid.set(to, cell);
     }
 
-    fn has_unit(&self, pt: &Point) -> bool {
-        if let Some(cell) = self.grid.get(pt) {
-            return matches!(cell, MapItem::Unit(..));
-        }
-        return false;
-    }
-
     fn add_unit(&mut self, pt: &Point, mut unit: Unit) {
         unit.pos.x = pt.x;
         unit.pos.y = pt.y;
@@ -309,8 +304,6 @@ impl std::fmt::Display for MapItem {
         Ok(())
     }
 }
-
-// Generic types
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
 struct Point {
@@ -402,71 +395,67 @@ where
         return if let Some(data) = old { data } else { None };
     }
 
-    fn shortest_path(&self, from: &Point, to: &Point) -> Option<Vec<Point>> {
-        let mut unvisited = vec![];
+    fn shortest_distance(&self, from: &Point, to: &Point) -> usize {
+        struct Node {
+            pt: Point,
+            distance: i32,
+        }
+
+        let mut unvisited: Vec<Node> = vec![];
 
         for y in 1..=self.height {
             for x in 1..=self.width {
                 let pt = Point::new(x, y);
                 if pt != *from && pt != *to && self.get(&pt).is_none() {
-                    unvisited.push((pt, -1, None));
+                    unvisited.push(Node { pt, distance: -1 });
                 }
             }
         }
 
-        unvisited.push((from.clone(), 0, None));
-        unvisited.push((to.clone(), -1, None));
+        unvisited.push(Node {
+            pt: from.clone(),
+            distance: 0,
+        });
+        unvisited.push(Node {
+            pt: to.clone(),
+            distance: -1,
+        });
 
         let mut visited = HashMap::new();
 
         while unvisited.len() > 0 {
             unvisited.sort_by(|a, b| {
-                if a.1 == -1 {
+                if a.distance == -1 {
                     Ordering::Less
-                } else if b.1 == -1 {
+                } else if b.distance == -1 {
                     Ordering::Greater
                 } else {
-                    b.1.cmp(&a.1)
+                    b.distance.cmp(&a.distance)
                 }
             });
 
-            let (pt, dist, prev) = unvisited.pop().unwrap();
+            let node = unvisited.pop().unwrap();
 
-            if dist == -1 {
+            if node.distance == -1 {
                 break;
             }
 
-            for nbr in pt.neighbours() {
-                if let Some(qt) = unvisited.iter_mut().find(|x| x.0 == nbr) {
-                    if qt.1 == -1 || qt.1 > dist + 1 {
-                        qt.1 = dist + 1;
-                        qt.2 = Some(pt);
+            for nbr in node.pt.neighbours() {
+                if let Some(qt) = unvisited.iter_mut().find(|x| x.pt == nbr) {
+                    if qt.distance == -1 || qt.distance > node.distance + 1 {
+                        qt.distance = node.distance + 1;
                     }
                 }
             }
 
-            visited.insert(pt, (pt.clone(), dist, prev));
+            visited.insert(node.pt, node);
         }
 
-        if visited.contains_key(to) {
-            let mut path = vec![];
-            let mut step = visited.remove(to).unwrap();
-            path.push(step.0);
-            while step.2.is_some() {
-                let pt = step.2.unwrap();
-                if let Some(x) = visited.remove(&pt) {
-                    step = x;
-                } else {
-                    // TODO: how we get here??
-                    path.push(pt);
-                    break;
-                }
-                path.push(pt);
-            }
-            return Some(path);
-        }
-
-        return None;
+        return if let Some(node) = visited.remove(to) {
+            (node.distance + 1) as usize
+        } else {
+            0
+        };
     }
 }
 
