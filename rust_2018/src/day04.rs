@@ -7,12 +7,15 @@ struct Guard {
     sleep_times: HashMap<u16, u16>,
     sleep_total: u16,
 }
+
+#[derive(PartialEq, Eq)]
 enum GuardAction {
     BeginsShift(u16),
     FallsAsleep,
     WakesUp,
 }
 
+#[derive(PartialEq, Eq, Ord)]
 struct Date {
     year: u16,
     month: u16,
@@ -21,6 +24,7 @@ struct Date {
     minute: u16,
 }
 
+#[derive(PartialEq, Eq)]
 struct Record {
     date: Date,
     action: GuardAction,
@@ -28,23 +32,22 @@ struct Record {
 
 pub fn solve(data: &str) -> (u16, u16) {
     let mut records = parse_data(&data);
-
-    records.sort_by(|a, b| a.cmp(&b));
+    records.sort();
 
     let guards = process_records(&records);
 
     let mut guards: Vec<&Guard> = guards.values().collect();
-    guards.sort_by(|a, b| b.sleep_total.cmp(&a.sleep_total));
+    guards.sort_by_key(|guard| guard.sleep_total);
 
-    let laziest_guard = guards[0];
-    let mut max_key: u16 = 0;
-    let mut max_value: u16 = 0;
-    for (key, value) in &laziest_guard.sleep_times {
-        if *value > max_value {
-            max_key = *key;
-            max_value = *value;
-        }
-    }
+    let laziest_guard = guards.last().unwrap();
+
+    let max_key = laziest_guard
+        .sleep_times
+        .iter()
+        .max_by(|a, b| a.1.cmp(b.1))
+        .unwrap()
+        .0;
+
     let star1 = max_key * laziest_guard.id;
 
     let mut most_slept: HashMap<u16, (u16, u16, u16)> = HashMap::new();
@@ -149,26 +152,32 @@ fn process_records(records: &Vec<Record>) -> HashMap<u16, Guard> {
     return guards;
 }
 
-impl Date {
-    fn cmp(&self, other: &Date) -> Ordering {
+impl PartialOrd for Date {
+    fn partial_cmp(&self, other: &Date) -> Option<Ordering> {
         if self.year == other.year {
             if self.month == other.month {
                 if self.day == other.day {
                     if self.hour == other.hour {
-                        return self.minute.cmp(&other.minute);
+                        return Some(self.minute.cmp(&other.minute));
                     }
-                    return self.hour.cmp(&other.hour);
+                    return Some(self.hour.cmp(&other.hour));
                 }
-                return self.day.cmp(&other.day);
+                return Some(self.day.cmp(&other.day));
             }
-            return self.month.cmp(&other.month);
+            return Some(self.month.cmp(&other.month));
         }
-        return self.year.cmp(&other.year);
+        return Some(self.year.cmp(&other.year));
     }
 }
 
-impl Record {
+impl PartialOrd for Record {
+    fn partial_cmp(&self, other: &Record) -> Option<Ordering> {
+        Some(self.date.cmp(&other.date))
+    }
+}
+
+impl Ord for Record {
     fn cmp(&self, other: &Record) -> Ordering {
-        self.date.cmp(&other.date)
+        self.partial_cmp(other).unwrap()
     }
 }

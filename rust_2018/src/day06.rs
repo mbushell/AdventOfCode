@@ -9,6 +9,8 @@ struct Area {
     is_infinite: bool,
 }
 
+pub static mut SAFE_REGION_THRESHOLD: u32 = 10000;
+
 pub fn solve(data: &str) -> (usize, u32) {
     let mut places = parse_coords(&data);
 
@@ -29,7 +31,8 @@ pub fn solve(data: &str) -> (usize, u32) {
     }
 
     let mut safe_region_size = 0;
-    const SAFE_REGION_THRESHOLD: u32 = 10000;
+
+    let safe_region_threshold = unsafe { SAFE_REGION_THRESHOLD };
 
     for x in min.x..=max.x {
         for y in min.y..=max.y {
@@ -45,7 +48,7 @@ pub fn solve(data: &str) -> (usize, u32) {
             for area in &places {
                 total_distance += area.coords.distance(&nbr);
             }
-            if total_distance < SAFE_REGION_THRESHOLD {
+            if total_distance < safe_region_threshold {
                 safe_region_size += 1;
             }
         }
@@ -73,12 +76,12 @@ fn parse_coords(data: &str) -> Vec<Area> {
             },
             neighbourhood: Vec::new(),
             is_infinite: false,
-        })
+        });
     }
     return coords;
 }
 
-fn find_closest<'a>(places: &'a mut Vec<Area>, coords: &Coords) -> Option<&'a mut Area> {
+fn find_closest<'a>(places: &'a mut [Area], coords: &Coords) -> Option<&'a mut Area> {
     let mut min_index = Some(0);
     let mut min_distance = places[0].coords.distance(coords);
     let mut tied = false;

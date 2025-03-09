@@ -8,7 +8,7 @@ pub fn solve(data: &str) -> (usize, usize) {
 
     let mut thread_pool = Vec::new();
     "abcdefghijklmnopqrstuvwxyz".chars().for_each(|c| {
-        let thread_units = shared_units.clone();
+        let thread_units = Arc::clone(&shared_units);
         thread_pool.push(thread::spawn(move || reduce_without(&thread_units, c)));
     });
 

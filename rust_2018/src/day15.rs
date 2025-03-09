@@ -71,7 +71,7 @@ impl Game {
                                 pos: Point::new(0, 0),
                                 kind: Kind::Elf,
                                 health: 200,
-                                attack: 3, // 12
+                                attack: 3, // increase for star2
                             },
                         );
                         None
@@ -95,9 +95,7 @@ impl Game {
     }
 
     fn take_turn(&mut self) -> bool {
-        let mut unit_positions = self.get_unit_positions(None);
-
-        for active_unit_pt in &mut unit_positions {
+        for active_unit_pt in &mut self.get_unit_positions(None) {
             let Some(unit) = self.get_unit(&active_unit_pt) else {
                 continue; // unit was killed
             };
@@ -143,12 +141,23 @@ impl Game {
         return true;
     }
 
-    fn move_unit(&mut self, unit_pos: &Point, targets: &Vec<Point>) -> Option<Point> {
+    fn move_unit(&mut self, current_pt: &Point, targets: &Vec<Point>) -> Option<Point> {
+        let Some(where_to) = self.find_closest(current_pt, targets) else {
+            return None;
+        };
+        let Some(next_pt) = self.find_closest(&where_to, &vec![current_pt.clone()]) else {
+            panic!("shouldn't happen...");
+        };
+        self.move_item(&current_pt, &next_pt);
+        return Some(next_pt);
+    }
+
+    fn find_closest(&self, from: &Point, targets: &Vec<Point>) -> Option<Point> {
         let mut possible_moves = vec![];
         let mut shortest_move = usize::max_value() - 1;
 
         for target_pt in targets {
-            if target_pt.dist(unit_pos) > shortest_move + 1 {
+            if target_pt.dist(from) > shortest_move + 1 {
                 continue;
             }
             for nbr in target_pt.neighbours() {
@@ -156,17 +165,21 @@ impl Game {
                     continue;
                 }
 
-                if nbr.dist(unit_pos) > shortest_move {
+                if nbr.dist(from) > shortest_move {
                     continue;
                 }
 
-                if nbr.is_adjacent(unit_pos) {
+                if nbr == *from {
+                    return Some(from.clone());
+                }
+
+                if nbr.is_adjacent(from) {
                     shortest_move = 2;
                     possible_moves.push((nbr, 2));
                     continue;
                 }
 
-                let length = self.grid.shortest_distance(&unit_pos, &nbr);
+                let length = self.grid.shortest_distance(&from, &nbr);
                 if length > 0 {
                     if length <= shortest_move {
                         shortest_move = std::cmp::min(shortest_move, length);
@@ -180,42 +193,7 @@ impl Game {
             return None;
         }
 
-        let mut possible_moves = possible_moves
-            .iter()
-            .filter(|x| x.1 == shortest_move)
-            .collect::<Vec<_>>();
-
-        possible_moves.sort_by(|a, b| a.0.cmp(&b.0));
-
-        let chosen_dest = possible_moves[0];
-
-        let mut possible_routes = vec![];
-        let mut shortest_route = usize::max_value();
-        for nbr in unit_pos.neighbours() {
-            if !self.is_open(&nbr) {
-                continue;
-            }
-
-            if nbr == chosen_dest.0 {
-                shortest_route = 2;
-                possible_routes.push((nbr, 2));
-                continue;
-            }
-
-            if nbr.dist(&chosen_dest.0) > shortest_route {
-                continue;
-            }
-
-            let length = self.grid.shortest_distance(&nbr, &chosen_dest.0);
-            if length > 0 {
-                if length <= shortest_route {
-                    shortest_route = std::cmp::min(shortest_route, length);
-                    possible_routes.push((nbr, length));
-                }
-            }
-        }
-
-        possible_routes.sort_by(|a, b| {
+        possible_moves.sort_by(|a, b| {
             if a.1 == b.1 {
                 a.0.cmp(&b.0)
             } else {
@@ -223,10 +201,7 @@ impl Game {
             }
         });
 
-        let chosen_move = possible_routes[0].0;
-
-        self.move_item(&unit_pos, &chosen_move);
-        return Some(chosen_move);
+        return Some(possible_moves[0].0);
     }
 
     fn get_unit_positions(&self, avoid: Option<Kind>) -> Vec<Point> {
