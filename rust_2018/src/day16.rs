@@ -9,11 +9,10 @@ pub fn solve(data: &str) -> (u32, u32) {
     };
 
     let mut opcode_matches: OpCodeMatches = HashMap::new();
-    let mut test_map = HashMap::new();
 
     let mut total_match_count = 0;
     for (test_index, test) in examples.iter().enumerate() {
-        let test_matches = test_map.entry(test_index).or_insert(vec![]);
+        let mut match_count = 0;
 
         for op_index in 0..16 {
             let inst = Instruction {
@@ -24,16 +23,16 @@ pub fn solve(data: &str) -> (u32, u32) {
             };
             let result = run(&inst, &test.before);
             if result == test.after {
-                test_matches.push(inst.opcode);
+                match_count += 1;
 
                 let v = opcode_matches.entry(inst.opcode).or_insert(HashMap::new());
 
                 *v.entry(test.inst[0]).or_insert(0) += 1;
             }
         }
-        if test_matches.len() == 0 {
+        if match_count == 0 {
             panic!("no instruction matches for test {test_index}");
-        } else if test_matches.len() >= 3 {
+        } else if match_count >= 3 {
             total_match_count += 1;
         }
     }
