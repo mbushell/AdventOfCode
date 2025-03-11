@@ -141,10 +141,6 @@ fn trace_water(grid: &mut Grid) {
                 // another branch has already been here
             }
             '~' | '#' => {
-                if y == grid.max_y {
-                    continue;
-                }
-
                 let mut overflows = false;
 
                 let mut l = x - 1;
@@ -172,10 +168,10 @@ fn trace_water(grid: &mut Grid) {
                 }
 
                 if overflows {
-                    if l >= grid.min_x && grid.cells[&(l - 1, y)] == '.' {
+                    if l > grid.min_x && grid.cells[&(l - 1, y)] == '.' {
                         queue.push((l - 1, y));
                     }
-                    if r <= grid.max_x && grid.cells[&(r + 1, y)] == '.' {
+                    if r < grid.max_x && grid.cells[&(r + 1, y)] == '.' {
                         queue.push((r + 1, y));
                     }
                 } else {
