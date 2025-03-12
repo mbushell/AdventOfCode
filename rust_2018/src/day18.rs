@@ -5,11 +5,50 @@ use std::fmt::Write;
 
 pub fn solve(data: &str) -> (usize, usize) {
     let mut grid = parse_data(data);
-    for _ in 1..=10 {
-        grid = evolve(grid);
+
+    let mut star1 = 0;
+    let mut star2 = 0;
+
+    const TARGET: i32 = 1000000000;
+
+    let mut counts = HashMap::new();
+
+    let mut repeat = None;
+    let mut shortcut = None;
+
+    for i in 1..=TARGET {
+        let (grid_tmp, trees, lumbaryards) = evolve(grid);
+
+        grid = grid_tmp;
+        if i == 10 {
+            star1 = trees * lumbaryards;
+        } else if let Some(i_0) = shortcut {
+            if i == i_0 {
+                star2 = trees * lumbaryards;
+                break;
+            }
+        }
+
+        let reps = counts.entry((trees, lumbaryards)).or_insert(0);
+        *reps += 1;
+
+        if repeat.is_none() && *reps == 4 {
+            repeat = Some((i, (trees, lumbaryards)));
+        } else if shortcut.is_none() {
+            if let Some((i_0, (trees_0, lumberyards_0))) = repeat {
+                if trees == trees_0 && lumbaryards == lumberyards_0 {
+                    let period = i - i_0;
+                    let mut k = i_0 + ((TARGET - i_0) % period);
+                    while k < i {
+                        k += period;
+                    }
+                    shortcut = Some(k);
+                }
+            }
+        }
     }
-    let star1 = grid.count(Acre::Trees) * grid.count(Acre::Lumberyard);
-    return (star1, 0);
+
+    return (star1, star2);
 }
 
 fn parse_data(data: &str) -> Grid {
@@ -26,11 +65,15 @@ fn parse_data(data: &str) -> Grid {
     return grid;
 }
 
-fn evolve(grid: Grid) -> Grid {
+fn evolve(grid: Grid) -> (Grid, usize, usize) {
     let mut new_grid = Grid {
         acres: HashMap::new(),
         size: grid.size,
     };
+
+    let mut trees = 0;
+    let mut lumberyards = 0;
+
     for y in 0..=grid.size {
         for x in 0..=grid.size {
             new_grid.acres.insert(
@@ -38,6 +81,7 @@ fn evolve(grid: Grid) -> Grid {
                 match grid.acres[&(x, y)] {
                     Acre::OpenGround => {
                         if grid.adj_count((x, y), Acre::Trees) >= 3 {
+                            trees += 1;
                             Acre::Trees
                         } else {
                             Acre::OpenGround
@@ -45,8 +89,10 @@ fn evolve(grid: Grid) -> Grid {
                     }
                     Acre::Trees => {
                         if grid.adj_count((x, y), Acre::Lumberyard) >= 3 {
+                            lumberyards += 1;
                             Acre::Lumberyard
                         } else {
+                            trees += 1;
                             Acre::Trees
                         }
                     }
@@ -54,6 +100,7 @@ fn evolve(grid: Grid) -> Grid {
                         if grid.adj_count((x, y), Acre::Lumberyard) >= 1
                             && grid.adj_count((x, y), Acre::Trees) >= 1
                         {
+                            lumberyards += 1;
                             Acre::Lumberyard
                         } else {
                             Acre::OpenGround
@@ -63,7 +110,7 @@ fn evolve(grid: Grid) -> Grid {
             );
         }
     }
-    return new_grid;
+    return (new_grid, trees, lumberyards);
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -79,20 +126,6 @@ struct Grid {
 }
 
 impl Grid {
-    fn count(&self, acre: Acre) -> usize {
-        let mut total = 0;
-        for y in 0..=self.size {
-            for x in 0..=self.size {
-                if let Some(&a) = self.acres.get(&(x, y)) {
-                    if a == acre {
-                        total += 1;
-                    }
-                }
-            }
-        }
-        return total;
-    }
-
     fn adj_count(&self, (x, y): (usize, usize), acre: Acre) -> usize {
         let mut total = 0;
         let (x, y) = (x as i32, y as i32);
