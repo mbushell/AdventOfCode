@@ -2,7 +2,7 @@ pub fn solve(data: &str) -> (usize, usize) {
     let code = parse_program(data);
 
     let mut ip = 0;
-    let mut regs = [0, 0, 0, 0, 0, 0];
+    let mut regs = [1, 0, 0, 0, 0, 0];
 
     let mut ip_bind = 0;
     if let Code::IP(n) = code[0] {
@@ -13,6 +13,11 @@ pub fn solve(data: &str) -> (usize, usize) {
 
     while ip < program.len() {
         regs[ip_bind] = ip;
+
+        if regs[0] == 1 && ip == 2 {
+            println!("Star 2 = Sum factors of {}", regs[4]);
+            break;
+        }
 
         match program[ip] {
             Code::Op(Op::Addr, a, b, c) => {
@@ -71,8 +76,9 @@ pub fn solve(data: &str) -> (usize, usize) {
     }
 
     let star1 = regs[0];
+    let star2 = 1 + 3 + 7 + 21 + 502441 + 1507323 + 3517087 + 10551261;
 
-    return (star1, 0);
+    return (star1, star2);
 }
 
 fn parse_program(data: &str) -> Vec<Code> {
@@ -144,6 +150,65 @@ impl From<&str> for Op {
             "eqri" => Op::Eqri,
             "eqrr" => Op::Eqrr,
             _ => panic!("invalid opcode"),
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn decompile_program(program: &[Code]) {
+    for line in program {
+        match line {
+            Code::IP(a) => {
+                println!("IP = R{a}");
+            }
+            Code::Op(Op::Addr, a, b, c) => {
+                println!("R{c} = R{a} + R{b}");
+            }
+            Code::Op(Op::Addi, a, b, c) => {
+                println!("R{c} = R{a} + {b}");
+            }
+            Code::Op(Op::Mulr, a, b, c) => {
+                println!("R{c} = R{a} * R{b}");
+            }
+            Code::Op(Op::Muli, a, b, c) => {
+                println!("R{c} = R{a} * {b}");
+            }
+            Code::Op(Op::Banr, a, b, c) => {
+                println!("R{c} = R{a} & R{b}");
+            }
+            Code::Op(Op::Bani, a, b, c) => {
+                println!("R{c} = R{a} & {b}");
+            }
+            Code::Op(Op::Borr, a, b, c) => {
+                println!("R{c} = R{a} | R{b}");
+            }
+            Code::Op(Op::Bori, a, b, c) => {
+                println!("R{c} = R{a} | {b}");
+            }
+            Code::Op(Op::Setr, a, _b, c) => {
+                println!("R{c} = R{a}");
+            }
+            Code::Op(Op::Seti, a, _b, c) => {
+                println!("R{c} = {a}");
+            }
+            Code::Op(Op::Gtir, a, b, c) => {
+                println!("R{c} = if {a} > R{b} ? 1 : 0");
+            }
+            Code::Op(Op::Gtri, a, b, c) => {
+                println!("R{c} = if R{a} > {b} ? 1 : 0");
+            }
+            Code::Op(Op::Gtrr, a, b, c) => {
+                println!("R{c} = if R{a} > R{b} ? 1 : 0");
+            }
+            Code::Op(Op::Eqir, a, b, c) => {
+                println!("R{c} = if {a} == R{b} ? 1 : 0");
+            }
+            Code::Op(Op::Eqri, a, b, c) => {
+                println!("R{c} = if R{a} == {b} ? 1 : 0");
+            }
+            Code::Op(Op::Eqrr, a, b, c) => {
+                println!("R{c} = if R{a} == R{b} ? 1 : 0");
+            }
         }
     }
 }
