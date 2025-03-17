@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-pub fn solve(data: &str) -> (i64, i64) {
+pub fn solve(data: &str) -> (usize, usize) {
     let code = parse_program(data);
 
     let mut ip: usize = 0;
-    let mut regs: [i64; 6] = [0, 0, 0, 0, 0, 0];
+    let mut regs: [usize; 6] = [0, 0, 0, 0, 0, 0];
 
     let mut ip_bind = 0;
     if let Code::IP(n) = code[0] {
@@ -12,8 +12,8 @@ pub fn solve(data: &str) -> (i64, i64) {
     }
     let program = &code[1..];
 
-    let mut star1 = i64::max_value();
-    let mut star2 = i64::min_value();
+    let mut star1 = usize::max_value();
+    let mut star2 = usize::min_value();
 
     let mut seen = HashMap::new();
     let mut loop_count = 0;
@@ -21,7 +21,7 @@ pub fn solve(data: &str) -> (i64, i64) {
     while ip < program.len() && loop_count < 1_000_000 {
         loop_count += 1;
 
-        regs[ip_bind] = ip as i64;
+        regs[ip_bind] = ip;
 
         if ip == 17 {
             regs[5] /= 256;
@@ -44,46 +44,46 @@ pub fn solve(data: &str) -> (i64, i64) {
                 regs[c] = regs[a] + regs[b];
             }
             Code::Op(Op::Addi, a, b, c) => {
-                regs[c] = regs[a] + b as i64;
+                regs[c] = regs[a] + b;
             }
             Code::Op(Op::Mulr, a, b, c) => {
                 regs[c] = regs[a] * regs[b];
             }
             Code::Op(Op::Muli, a, b, c) => {
-                regs[c] = regs[a] * b as i64;
+                regs[c] = regs[a] * b;
             }
             Code::Op(Op::Banr, a, b, c) => {
                 regs[c] = regs[a] & regs[b];
             }
             Code::Op(Op::Bani, a, b, c) => {
-                regs[c] = regs[a] & b as i64;
+                regs[c] = regs[a] & b;
             }
             Code::Op(Op::Borr, a, b, c) => {
                 regs[c] = regs[a] | regs[b];
             }
             Code::Op(Op::Bori, a, b, c) => {
-                regs[c] = regs[a] | b as i64;
+                regs[c] = regs[a] | b;
             }
             Code::Op(Op::Setr, a, _b, c) => {
                 regs[c] = regs[a];
             }
             Code::Op(Op::Seti, a, _b, c) => {
-                regs[c] = a as i64;
+                regs[c] = a;
             }
             Code::Op(Op::Gtir, a, b, c) => {
-                regs[c] = if a as i64 > regs[b] { 1 } else { 0 };
+                regs[c] = if a > regs[b] { 1 } else { 0 };
             }
             Code::Op(Op::Gtri, a, b, c) => {
-                regs[c] = if regs[a] > b as i64 { 1 } else { 0 };
+                regs[c] = if regs[a] > b { 1 } else { 0 };
             }
             Code::Op(Op::Gtrr, a, b, c) => {
                 regs[c] = if regs[a] > regs[b] { 1 } else { 0 };
             }
             Code::Op(Op::Eqir, a, b, c) => {
-                regs[c] = if a as i64 == regs[b] { 1 } else { 0 };
+                regs[c] = if a == regs[b] { 1 } else { 0 };
             }
             Code::Op(Op::Eqri, a, b, c) => {
-                regs[c] = if regs[a] == b as i64 { 1 } else { 0 };
+                regs[c] = if regs[a] == b { 1 } else { 0 };
             }
             Code::Op(Op::Eqrr, a, b, c) => {
                 regs[c] = if regs[a] == regs[b] { 1 } else { 0 };
@@ -91,7 +91,7 @@ pub fn solve(data: &str) -> (i64, i64) {
             _ => panic!(),
         }
 
-        ip = regs[ip_bind] as usize;
+        ip = regs[ip_bind];
         ip += 1;
     }
 
