@@ -1,13 +1,17 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
+use std::ops::Add;
+
+const PADDING: usize = 3;
 
 pub fn solve(data: &str) -> (usize, usize) {
     let (depth, target) = parse_data(data);
 
     let mut grid = HashMap::new();
 
-    for y in 0..=target.y {
-        for x in 0..=target.x {
+    for y in 0..=(target.y * PADDING) {
+        for x in 0..=(target.x * PADDING) {
             if (x == 0 && y == 0) || (x == target.x && y == target.y) {
                 grid.insert(Point { x, y }, depth % 20183);
             } else if y == 0 {
@@ -25,9 +29,15 @@ pub fn solve(data: &str) -> (usize, usize) {
 
     let mut risk_level = 0;
 
-    for y in 0..=target.y {
-        for x in 0..=target.x {
-            risk_level += grid[&Point { x, y }] % 3;
+    for y in 0..=(target.y * PADDING) {
+        for x in 0..=(target.x * PADDING) {
+            let pt = Point { x, y };
+            let value = grid[&pt] % 3;
+            grid.insert(pt, value);
+
+            if x <= target.x && y <= target.y {
+                risk_level += value;
+            }
         }
     }
 
@@ -68,43 +78,175 @@ fn parse_data(data: &str) -> (usize, Point) {
     return (depth, target);
 }
 
-fn find_friend(_grid: &Grid, target: Point) -> usize {
-    type Node = (Point, Equipment);
+fn find_friend(grid: &Grid, target: Point) -> usize {
+    struct Node {
+        dist: Distance,
+        prev: Option<(Point, Equipment)>,
+    }
 
-    let mut unvisited: HashMap<Node, Distance> = HashMap::new();
-    let mut visited: HashMap<Node, Distance> = HashMap::new();
+    impl Node {
+        fn new(dist: Distance) -> Node {
+            Node { dist, prev: None }
+        }
+    }
 
-    for y in 0..=target.y {
-        for x in 0..=target.x {
+    type Unvisited = HashMap<(Point, Equipment), Node>;
+
+    let mut unvisited: Unvisited = HashMap::new();
+
+    for y in 0..=(target.y * PADDING) {
+        for x in 0..=(target.x * PADDING) {
             if x == 0 && y == 0 {
                 continue;
             }
-            unvisited.insert((Point { x, y }, Equipment::None), Distance::Infinte);
-            unvisited.insert((Point { x, y }, Equipment::Both), Distance::Infinte);
+            let pt = Point { x, y };
+            let (a, b) = Terrain::from(grid[&pt]).allowed_equipment();
+            unvisited.insert((pt.clone(), a), Node::new(Distance::Infinte));
+            unvisited.insert((pt.clone(), b), Node::new(Distance::Infinte));
         }
     }
+    unvisited.insert(
+        (Point { x: 0, y: 0 }, Equipment::None),
+        Node::new(Distance::Finite(0)),
+    );
 
-    let mut queue = vec![(Point { x: 0, y: 0 }, Equipment::Torch, Distance::Finite(0))];
+    let mut visited: HashMap<(Point, Equipment), Node> = HashMap::new();
 
-    while queue.len() > 0 {
-        queue.sort_by(|a, b| a.2.cmp(&b.2));
+    while unvisited.len() > 0 {
+        let (curr_pt, curr_equip, curr_node) = unvisited
+            .iter()
+            .min_by(|a, b| a.1.dist.cmp(&b.1.dist))
+            .map(|((pt, equip), dist)| (pt.clone(), equip.clone(), dist))
+            .unwrap();
 
-        let (pt, equip, dist) = queue.pop().unwrap();
-
-        if matches!(dist, Distance::Infinte) {
-            break;
+        if curr_pt == target {
+            if let Distance::Finite(distance) = curr_node.dist {
+                return distance;
+            }
+            panic!("unable to reach target");
         }
 
-        for nbr in [pt.up(), pt.down(), pt.left(), pt.right()] {
-            let Some(_nbr) = nbr else {
+        let Distance::Finite(curr_dist) = curr_node.dist else {
+            break;
+        };
+
+        let curr_terrain = Terrain::from(grid[&curr_pt]);
+
+        for nbr in [
+            curr_pt.up(),
+            curr_pt.down(),
+            curr_pt.left(),
+            curr_pt.right(),
+        ] {
+            let Some(nbr) = nbr else {
                 continue;
             };
+            if !grid.contains_key(&nbr) {
+                continue;
+            }
+
+            fn check_nbr(
+                curr_pt: &Point,
+                curr_equip: Equipment,
+                curr_dist: usize,
+                src_equipment: Equipment,
+                dst_equipment: Equipment,
+                nbr: &Point,
+                unvisited: &mut Unvisited,
+            ) {
+                if src_equipment != dst_equipment {
+                    return;
+                }
+
+                let key = (nbr.clone(), dst_equipment);
+                let cost = Distance::Finite(
+                    curr_dist
+                        + if curr_equip == src_equipment {
+                            1
+                        } else {
+                            1 + 7
+                        },
+                );
+
+                unvisited.entry(key).and_modify(|node| {
+                    if cost < node.dist {
+                        node.dist = cost;
+                        node.prev = Some((curr_pt.clone(), curr_equip));
+                    }
+                });
+            }
+
+            let (src_allowed_equipment_1, src_allowed_equipment_2) =
+                curr_terrain.allowed_equipment();
+
+            let (dst_allowed_equipment_1, dst_allowed_equipment_2) =
+                Terrain::from(grid[&nbr]).allowed_equipment();
+
+            check_nbr(
+                &curr_pt,
+                curr_equip,
+                curr_dist,
+                src_allowed_equipment_1,
+                dst_allowed_equipment_1,
+                &nbr,
+                &mut unvisited,
+            );
+            check_nbr(
+                &curr_pt,
+                curr_equip,
+                curr_dist,
+                src_allowed_equipment_1,
+                dst_allowed_equipment_2,
+                &nbr,
+                &mut unvisited,
+            );
+            check_nbr(
+                &curr_pt,
+                curr_equip,
+                curr_dist,
+                src_allowed_equipment_2,
+                dst_allowed_equipment_1,
+                &nbr,
+                &mut unvisited,
+            );
+            check_nbr(
+                &curr_pt,
+                curr_equip,
+                curr_dist,
+                src_allowed_equipment_2,
+                dst_allowed_equipment_2,
+                &nbr,
+                &mut unvisited,
+            );
         }
 
-        visited.insert((pt, equip), dist);
+        let curr_node = unvisited
+            .remove(&(curr_pt.clone(), curr_equip.clone()))
+            .unwrap();
+
+        visited.insert((curr_pt, curr_equip), curr_node);
     }
 
-    return 0;
+    panic!("target not found");
+}
+
+#[allow(dead_code)]
+fn print_grid(grid: &Grid, target: &Point, path: Option<&Vec<Point>>) {
+    for y in 0..(target.y + PADDING) {
+        for x in 0..(target.x + PADDING) {
+            let pt = Point { x, y };
+            if x == 0 && y == 0 {
+                print!("M");
+            } else if x == target.x && y == target.y {
+                print!("T");
+            } else if path.is_some_and(|p| p.contains(&pt)) {
+                print!("@");
+            } else {
+                print!("{}", char::from(Terrain::from(grid[&pt])));
+            }
+        }
+        println!();
+    }
 }
 
 type Grid = HashMap<Point, usize>;
@@ -113,6 +255,12 @@ type Grid = HashMap<Point, usize>;
 struct Point {
     x: usize,
     y: usize,
+}
+
+impl Display for Point {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.write_str(&format!("({},{})", self.x, self.y))
+    }
 }
 
 impl Point {
@@ -150,18 +298,75 @@ impl Point {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone)]
+enum Terrain {
+    Rocky,
+    Wet,
+    Narrow,
+}
+
+impl Terrain {
+    fn allowed_equipment(&self) -> (Equipment, Equipment) {
+        match self {
+            Terrain::Rocky => (Equipment::ClimbingGear, Equipment::Torch),
+            Terrain::Wet => (Equipment::ClimbingGear, Equipment::None),
+            Terrain::Narrow => (Equipment::Torch, Equipment::None),
+        }
+    }
+}
+
+impl From<Terrain> for char {
+    fn from(terrain: Terrain) -> Self {
+        match terrain {
+            Terrain::Rocky => '.',
+            Terrain::Wet => '=',
+            Terrain::Narrow => '|',
+        }
+    }
+}
+
+impl From<Terrain> for usize {
+    fn from(terrain: Terrain) -> Self {
+        match terrain {
+            Terrain::Rocky => 0,
+            Terrain::Wet => 1,
+            Terrain::Narrow => 2,
+        }
+    }
+}
+
+impl From<usize> for Terrain {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Terrain::Rocky,
+            1 => Terrain::Wet,
+            2 => Terrain::Narrow,
+            _ => panic!(),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum Equipment {
     None,
-    Both,
     Torch,
     ClimbingGear,
 }
 
-#[derive(PartialEq, Eq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Hash)]
 enum Distance {
     Finite(usize),
     Infinte,
+}
+
+impl Add<usize> for Distance {
+    type Output = Distance;
+    fn add(self, value: usize) -> Self {
+        let Distance::Finite(dist) = self else {
+            return Distance::Infinte;
+        };
+        return Distance::Finite(dist + value);
+    }
 }
 
 impl Ord for Distance {
