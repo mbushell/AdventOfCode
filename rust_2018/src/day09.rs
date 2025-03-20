@@ -2,7 +2,7 @@ pub fn solve(data: &str) -> (u32, u32) {
     let (player_count, marble_count) = parse_data(data);
 
     let star1 = play_game(player_count, marble_count);
-    let star2 = 0;
+    let star2 = play_game(player_count, marble_count * 100);
 
     return (star1, star2);
 }
