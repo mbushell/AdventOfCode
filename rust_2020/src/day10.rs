@@ -26,8 +26,8 @@ pub fn solve(data: &str) -> (usize, usize) {
             while jolts[j + 1] - jolts[j] == 1 {
                 j += 1;
             }
-            let ones_streak = j - i + 1;
 
+            let ones_streak = j - i + 1;
             ones += ones_streak;
 
             match ones_streak {
