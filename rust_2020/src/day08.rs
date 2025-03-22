@@ -18,7 +18,7 @@ pub fn solve(data: &str) -> (i32, i32) {
             star2 = result;
             break;
         }
-        ops[i] = op.clone();
+        ops[i] = op;
     }
 
     return (star1, star2);
