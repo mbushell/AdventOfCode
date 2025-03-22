@@ -29,12 +29,12 @@ fn parse_data(data: &str) -> Vec<Passport> {
     return passports;
 }
 
-struct Passport {
-    map: HashMap<String, String>,
+struct Passport<'a> {
+    map: HashMap<&'a str, &'a str>,
     is_valid: bool,
 }
 
-impl Passport {
+impl<'a> Passport<'a> {
     fn new() -> Self {
         Self {
             map: HashMap::new(),
@@ -42,9 +42,9 @@ impl Passport {
         }
     }
 
-    fn add_field(&mut self, key: &str, value: &str) {
+    fn add_field(&mut self, key: &'a str, value: &'a str) {
         self.is_valid &= self.is_field_valid(key, value);
-        self.map.insert(key.to_string(), value.to_string());
+        self.map.insert(&key, &value);
     }
 
     fn is_valid1(&self) -> bool {
@@ -55,7 +55,7 @@ impl Passport {
         self.is_valid1() && self.is_valid
     }
 
-    const EYE_COLOURS: [&str; 7] = ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"];
+    const EYE_COLOURS: [&'static str; 7] = ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"];
 
     fn is_field_valid(&self, key: &str, value: &str) -> bool {
         return match key {
