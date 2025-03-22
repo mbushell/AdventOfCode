@@ -34,7 +34,9 @@ pub fn solve2(data: &str, preamble_len: usize) -> (usize, usize) {
             if numbers[j] == star1 {
                 continue 'outer;
             }
+
             total += numbers[j];
+
             if total == star1 {
                 star2 = numbers[(i + 1)..=j].iter().min().unwrap()
                     + numbers[(i + 1)..=j].iter().max().unwrap();
