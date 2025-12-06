@@ -5,22 +5,16 @@ const testInput = `123 328  51 64
 `;
 
 export function star1(input) {
-    return problems1(input).reduce(
-        (total, problem) => total + solve(problem),
-        0
-    );
+    return total(problems1(input));
 }
 
 export function star2(input) {
-    return problems2(input).reduce(
-        (total, problem) => total + solve(problem),
-        0
-    );
+    return total(problems2(input));
 }
 
 function problems1(input) {
     const lines = input
-        .trim()
+        .replace(/\n$/, "")
         .split("\n")
         .map((s) => s.trim().replace(/\s+/g, " ").split(" "));
     return lines[0].map((_, i) => lines.map((l) => l[i]));
@@ -34,16 +28,15 @@ function problems2(input) {
         .split("|")
         .toReversed();
 
-    let i = lines[0].length - 1;
+    let from = lines[0].length - 1;
 
     return operators.map((operator) => {
         let problem = [];
-        for (let j = 0; j < operator.length; j++) {
-            problem.push(lines.map((l) => l[i]).join(""));
-            i--;
+        for (let j in operator) {
+            problem.push(lines.map((l) => l[from - j]).join(""));
         }
-        i--;
         problem.push(operator.trim());
+        from -= operator.length + 1;
         return problem;
     });
 }
@@ -58,4 +51,8 @@ function solve(problem) {
                 identity ? result * Number(operand) : result + Number(operand),
             identity
         );
+}
+
+function total(problems) {
+    return problems.reduce((total, problem) => total + solve(problem), 0);
 }
