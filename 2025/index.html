@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!--http://127.0.0.1:3000/2025/index.html-->
+    <head>
+        <meta meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Advent of Code 2025</title>
+        <style>
+            * {
+                margin: 6px 0px;
+            }
+            body {
+                margin: 12px;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 16px;
+            }
+            section {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            pre {
+                padding: 6px;
+            }
+            pre:hover {
+                cursor: copy;
+                text-decoration: underline;
+                background-color: hsl(0, 0%, 94%);
+            }
+        </style>
+        <script>
+            function copy(element) {
+                navigator.clipboard.writeText(element.innerText);
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Advent of Code 2025</h1>
+        <main>
+            <section>
+                <h3>Star 1</h3>
+                <p><pre id="star1" onclick="copy(this)"></pre></p>
+            </section>
+            <section>
+                <h3>Star 2</h3>
+                <p><pre id="star2" onclick="copy(this)"></pre></p>
+            </section>
+            <script type="module">
+                import { star1, star2 } from "./day06.js";
+                const input = await (await fetch("./day06.txt")).text();
+                document.getElementById("star1").innerText = star1(input);
+                document.getElementById("star2").innerText = star2(input);
+            </script>
+        </main>
+    </body>
+</html>
